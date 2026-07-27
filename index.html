@@ -215,6 +215,13 @@
       font-weight: 800;
       letter-spacing: -0.5px;
       box-shadow: inset 0 -2px 0 rgba(0,0,0,0.08);
+      cursor: pointer;
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+
+    .capacity-pill:hover {
+      transform: translateY(-2px);
+      box-shadow: inset 0 -2px 0 rgba(0,0,0,0.08), 0 6px 14px rgba(0,0,0,0.15);
     }
 
     .black-panel {
@@ -1514,7 +1521,7 @@
             <p>공통지원 / 선택약정 선택 가능</p>
             <p>일시납 / 24개월 할부 선택 가능</p>
           </div>
-          <div class="capacity-pill">요금제별 실구매가 자동 계산</div>
+          <div class="capacity-pill" onclick="scrollToCalculator()" role="button" tabindex="0" onkeypress="if(event.key==='Enter')scrollToCalculator()">요금제별 실구매가 자동 계산 ↓</div>
         </div>
       </div>
 
@@ -1905,6 +1912,13 @@
         planTable.scrollIntoView({ behavior: "smooth", block: "start" });
       }
     });
+  };
+
+  window.scrollToCalculator = function () {
+    const calcWrap = document.querySelector(".npnp-calc-wrap");
+    if (calcWrap) {
+      calcWrap.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
   };
 
   window.showDetailTab = function (tabName) {
