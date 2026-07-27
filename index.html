@@ -323,22 +323,6 @@
       border-radius: 12px;
     }
 
-    .onnuri-note {
-      margin: 14px 18px 0;
-      padding: 16px 18px;
-      border-radius: 12px;
-      background: #ecfff3;
-      border: 2px solid #16a34a;
-      color: #05852f;
-      font-size: 18px;
-      font-weight: 900;
-      line-height: 1.45;
-      text-align: center;
-      word-break: keep-all;
-      box-shadow: 0 4px 14px rgba(22, 163, 74, 0.18);
-      white-space: pre-line;
-    }
-
     .selector-area {
       background: #444;
       padding: 15px;
@@ -1007,15 +991,6 @@
       border-radius: 20px;
     }
 
-    .onnuri-note {
-      border: 1px solid #a9e8bd;
-      border-radius: 16px;
-      background: #effcf3;
-      box-shadow: none;
-      color: #138a3d;
-      font-size: 16px;
-    }
-
     .selector-area {
       padding: 30px 28px;
       background: linear-gradient(180deg, #f8fafc 0%, #eef3f8 100%);
@@ -1179,16 +1154,6 @@
       font-size: 13px;
       font-weight: 800;
       line-height: 1.25;
-    }
-
-    .device-card-benefit {
-      display: block;
-      margin-top: 8px;
-      color: #f0443c;
-      font-size: 12px;
-      font-weight: 900;
-      line-height: 1.3;
-      word-break: keep-all;
     }
 
     .device-card-empty {
@@ -1413,8 +1378,7 @@
       .device-card-visual img { max-height: 116px; }
       .device-phone-placeholder { width: 62px; height: 104px; border-radius: 16px; border-width: 4px; }
       .device-card-name { font-size: 13px; }
-      .device-card-price,
-      .device-card-benefit { font-size: 11px; }
+      .device-card-price { font-size: 11px; }
       .option-title { padding: 20px 20px 4px; }
       .tab-group, .sub-tab, .carrier-tab-group { padding: 10px 20px 18px; }
       .tab, .stab { min-height: 56px; }
@@ -1530,7 +1494,6 @@
       <img id="deviceImage" src="" alt="선택 모델 이미지">
     </div>
 
-    <div class="onnuri-note" id="onnuri-note" style="display:none;"></div>
     <div class="selector-area">
       <div class="device-select-title">모델을 선택해주세요</div>
 
@@ -1619,11 +1582,6 @@
         <section class="sheet-info-section" id="detail-spec-section">
           <h3 class="sheet-info-title">상세페이지</h3>
           <div class="sheet-info-content" id="detail-spec-content"></div>
-        </section>
-
-        <section class="sheet-info-section" id="procedure-notice-section">
-          <h3 class="sheet-info-title">유의사항 및 절차</h3>
-          <div class="sheet-info-content" id="procedure-notice-content"></div>
         </section>
       </div>
 
@@ -1734,35 +1692,27 @@
 
 <script>
 (function () {
-  const SHEET_ID = "1n3nmw8oZp8FR1AhxNFYcV-H9wB5y3SV1ksknf23ez-U";
-  const SHEET_URL =
-    "https://docs.google.com/spreadsheets/d/" +
-    SHEET_ID +
-    "/gviz/tq?tqx=out:json&sheet=data";
-
   const DEFAULT_KAKAO = "http://pf.kakao.com/_xmgiwn/chat";
   const NPNP_API_URL = "https://www.np-np.kr/api/products/elevenst";
+  const NPNP_PLANS_API_URL = "https://www.np-np.kr/api/mobile/plans";
 
   const params = new URLSearchParams(window.location.search);
   const ONLY_MODEL = params.get("model");
 
-  let allData = [];
+  let allProducts = []; // np-np.kr에서 가져온 11번가 연동 상품 (ONLY_MODEL 필터 적용됨)
   let joinType = "CHG";
   let discountType = "SUPPORT";
   let payType = "CASH";
   let carrier = "SKT";
-  let rawData = [];
+  let applyUrl = "";    // 상품과 무관한 공통 링크 (np-np.kr 관리자 설정)
+  let approvalUrl = "";
+
+  // 요금제 조회 결과 캐시: `${상품id}_${통신사}` -> plans 배열
+  // 가입유형/할인방식/결제방법 변경은 재조회 없이 캐시된 요금제로 다시 계산만 하면 됨
+  const planCache = {};
+  let renderToken = 0; // 응답이 늦게 와서 그 사이 선택이 바뀐 경우 낡은 결과를 무시하기 위한 토큰
 
   const CARRIER_LABEL = { SKT: "SK", KT: "KT", "LGU+": "LG U+" };
-
-  function normalizeCarrier(value) {
-    const text = String(value || "").toUpperCase().replace(/\s+/g, "");
-    if (!text) return "SKT";
-    if (text.includes("SKT") || text.includes("SK텔레콤")) return "SKT";
-    if (text.includes("LGU") || text.includes("LG U") || text.includes("U+") || text.includes("엘지")) return "LGU+";
-    if (text.includes("KT")) return "KT";
-    return "SKT";
-  }
 
   function won(num) {
     const n = Number(num) || 0;
@@ -1770,106 +1720,11 @@
     return sign + Math.round(Math.abs(n)).toLocaleString("ko-KR") + "원";
   }
 
-  function parseNumber(value) {
-    if (value === null || value === undefined) return 0;
-    return Number(String(value).replace(/[^0-9.-]/g, "")) || 0;
-  }
-
-  function toWon(value) {
-    const n = parseNumber(value);
-    if (!n) return 0;
-
-    // 출고가처럼 1,254,000원 단위면 그대로 사용
-    if (Math.abs(n) >= 10000) return n;
-
-    // 44, 59, 63 같은 값은 만원 단위로 처리
-    return n * 10000;
-  }
-
-  function splitCell(value) {
-    if (!value) return [];
-    return String(value)
-      .split(",")
-      .map(function (v) {
-        return v.trim();
-      });
-  }
-
-  function getByIndex(value, index) {
-    const arr = splitCell(value);
-    return arr[index] || arr[0] || "";
-  }
-
-  function getCell(row, index) {
-    if (!row.c[index]) return "";
-    return row.c[index].f || row.c[index].v || "";
-  }
-
-  function parsePlanCell(value, index) {
-    const text = String(value || "").trim();
-    if (!text) return null;
-
-    const priceMatch = text.match(/(\d[\d,]{1,8})\s*원?$/);
-    const rawFee = priceMatch ? Number(priceMatch[1].replace(/,/g, "")) : 0;
-    const fee = rawFee > 0 && rawFee < 1000 ? rawFee * 1000 : rawFee;
-    const name =
-      rawFee >= 1000 && priceMatch
-        ? text.slice(0, priceMatch.index).trim() || text
-        : text;
-
-    if (!fee) return null;
-
-    return {
-      name: name,
-      fee: fee,
-      originalIndex: index
-    };
-  }
-
-  function normalizeRow(row) {
-    const plans = [
-      parsePlanCell(getCell(row, 11), 0), // L 요금제1
-      parsePlanCell(getCell(row, 12), 1), // M 요금제2
-      parsePlanCell(getCell(row, 13), 2), // N 요금제3
-      parsePlanCell(getCell(row, 14), 3)  // O 요금제4
-    ]
-      .filter(function (item) {
-        return item && item.name && item.fee;
-      })
-      .sort(function (a, b) {
-        return b.fee - a.fee;
-      });
-
-    return {
-      carrier: normalizeCarrier(getCell(row, 19)),   // T 통신사 (SKT/KT/LGU+, 비어있으면 SKT)
-      name: String(getCell(row, 0)).trim(),          // A 기종명
-      factory: toWon(getCell(row, 1)),               // B 출고가
-
-      extraCHGText: getCell(row, 2),                 // C 기변_추가지원금
-      extraMNPText: getCell(row, 3),                 // D 번이_추가지원금
-      supportCHGText: getCell(row, 4),               // E SKT기변
-      supportMNPText: getCell(row, 5),               // F SKT번이
-
-      applyUrl: getCell(row, 6),                     // G 신청서URL
-      approvalUrl: getCell(row, 7),                  // H 사전승낙서
-      benefit: getCell(row, 8),                      // I 혜택
-      modelImageUrl: getCell(row, 9),                // J 상세페이지 / 모델이미지
-      notice: getCell(row, 10),                      // K 유의사항
-      detailSpec: getCell(row, 17),                 // R 상세스펙
-      procedureNotice: getCell(row, 18),             // S 유의사항 및 절차
-      npnpProductId: String(getCell(row, 20)).trim(), // U 니폰내폰상품ID (있으면 이름/출고가/이미지를 np-np.kr에서 가져와 덮어씀)
-
-      plans: plans
-    };
-  }
-
-  const NPNP_PLANS_API_URL = "https://www.np-np.kr/api/mobile/plans";
-
   function telecomToNpnpParam(carrier) {
     return carrier === "LGU+" ? "LGUPLUS" : carrier; // SKT/KT는 그대로, LGU+ → LGUPLUS
   }
 
-  // np-np.kr의 요금제/공시지원금/추가지원금을 그대로 가져와 시트의 L~O(요금제), C~F(지원금) 대체
+  // np-np.kr에서 상품별 요금제 + 공시지원금 + 추가지원금을 실시간으로 가져옴
   async function fetchNpnpPlans(productId, carrier) {
     try {
       const url =
@@ -1889,43 +1744,15 @@
         };
       });
     } catch (e) {
-      console.error("np-np.kr 요금제 연동 조회 실패 (시트 요금제로 진행):", e);
-      return null;
+      console.error("np-np.kr 요금제 조회 실패:", e);
+      return [];
     }
   }
 
-  // U열(니폰내폰상품ID)이 채워진 행은 이름/출고가/이미지/요금제/지원금을 np-np.kr 데이터로 덮어씀
-  // (없거나 매칭 실패 시 시트에 입력된 기존 값 그대로 사용 — 기존 행 호환)
-  async function applyNpnpOverride(item, npnpMap) {
-    if (!item.npnpProductId) return item;
-    const matched = npnpMap[item.npnpProductId];
-    if (!matched) return item;
-
-    const overrides = {
-      name: matched.name || item.name,
-      factory: matched.factoryPrice || item.factory,
-      modelImageUrl: matched.image || item.modelImageUrl,
-    };
-
-    const npnpPlans = await fetchNpnpPlans(item.npnpProductId, item.carrier);
-    if (npnpPlans && npnpPlans.length) {
-      overrides.plans = npnpPlans;
-    }
-
-    return Object.assign({}, item, overrides);
-  }
-
-  async function fetchNpnpProductMap() {
-    try {
-      const res = await fetch(NPNP_API_URL);
-      const data = await res.json();
-      const map = {};
-      (data.products || []).forEach(function (p) { map[p.id] = p; });
-      return map;
-    } catch (e) {
-      console.error("np-np.kr 상품 연동 조회 실패 (시트 데이터로만 진행):", e);
-      return {};
-    }
+  async function fetchNpnpProducts() {
+    const res = await fetch(NPNP_API_URL);
+    const data = await res.json();
+    return data;
   }
 
   function setLink(id, url) {
@@ -1943,33 +1770,6 @@
     }
   }
 
-  function setSheetInfo(sectionId, contentId, value) {
-    const section = document.getElementById(sectionId);
-    const content = document.getElementById(contentId);
-    if (!section || !content) return;
-
-    const text = String(value || "").trim();
-    content.textContent = "";
-
-    if (text && /^https?:\/\//i.test(text)) {
-      text
-        .split(/\r?\n/)
-        .map(function (url) { return url.trim(); })
-        .filter(function (url) { return /^https?:\/\//i.test(url); })
-        .forEach(function (url) {
-          const image = document.createElement("img");
-          image.src = url;
-          image.alt = "상품 상세페이지";
-          image.loading = "lazy";
-          content.appendChild(image);
-        });
-    } else {
-      content.textContent = text;
-    }
-
-    section.style.display = text ? "block" : "none";
-  }
-
   function escapeHtml(value) {
     return String(value || "")
       .replace(/&/g, "&amp;")
@@ -1983,27 +1783,23 @@
     const cardList = document.getElementById("device-card-list");
     if (!cardList) return;
 
-    if (!allData.length) {
+    if (!allProducts.length) {
       cardList.innerHTML = '<div class="device-card-empty">모델 데이터가 없습니다.</div>';
       return;
     }
 
-    cardList.innerHTML = allData
+    cardList.innerHTML = allProducts
       .map(function (d, index) {
         const imageUrl = String(d.modelImageUrl || "").trim();
         const visualHtml = imageUrl && /^https?:\/\//i.test(imageUrl)
           ? '<img src="' + escapeHtml(imageUrl) + '" alt="' + escapeHtml(d.name) + '" loading="lazy" onerror="this.outerHTML=\'&lt;span class=&quot;device-phone-placeholder&quot;&gt;&lt;/span&gt;\';">'
           : '<span class="device-phone-placeholder"></span>';
-        const benefitHtml = d.benefit
-          ? '<span class="device-card-benefit">' + escapeHtml(d.benefit) + '</span>'
-          : "";
 
         return (
           '<button type="button" class="device-card" data-device-index="' + index + '" onclick="selectDevice(' + index + ')">' +
             '<span class="device-card-visual">' + visualHtml + '</span>' +
             '<span class="device-card-name">' + escapeHtml(d.name) + '</span>' +
             '<span class="device-card-price">출고가 ' + escapeHtml(won(d.factory)) + '</span>' +
-            benefitHtml +
           '</button>'
         );
       })
@@ -2046,33 +1842,27 @@
     serviceTab.setAttribute("aria-selected", String(!isProduct));
   };
 
+  // 통신사는 더 이상 기기 목록을 필터링하지 않음 (np-np.kr 상품은 통신사와 무관하게
+  // 등록되고, 요금제/지원금만 통신사별로 실시간 조회함) — ONLY_MODEL만 적용
   function refreshDeviceList() {
-    allData = rawData.filter(function (item) {
-      if (!item.name || !item.factory) return false;
-      if (item.carrier !== carrier) return false;
-      if (!ONLY_MODEL) return true;
-      return item.name.toLowerCase().trim().includes(String(ONLY_MODEL).toLowerCase().trim());
-    });
-
     const selector = document.getElementById("device-select");
 
-    if (!allData.length) {
-      document.getElementById("disp-name").innerText = CARRIER_LABEL[carrier] + " 모델 데이터 없음";
+    if (!allProducts.length) {
+      document.getElementById("disp-name").innerText = "모델 데이터 없음";
       document.getElementById("disp-factory").innerText = "";
       selector.innerHTML = '<option>해당 모델 데이터 없음</option>';
       renderDeviceCards();
       document.getElementById("plan-body").innerHTML =
-        '<tr><td colspan="6" class="loading-cell">선택하신 통신사(' + CARRIER_LABEL[carrier] + ') 데이터가 시트에 없습니다. T열(통신사) 값을 확인해 주세요.</td></tr>';
+        '<tr><td colspan="6" class="loading-cell">np-np.kr 관리자에서 11번가 연동 상품으로 지정된 기기가 없습니다.</td></tr>';
       setLink("link-apply", "");
       setLink("link-approval", "");
       notifyParentHeight();
       return;
     }
 
-    selector.innerHTML = allData
+    selector.innerHTML = allProducts
       .map(function (d, index) {
-        const label = d.benefit ? d.name + " - " + d.benefit : d.name;
-        return '<option value="' + index + '">' + label + '</option>';
+        return '<option value="' + index + '">' + d.name + '</option>';
       })
       .join("");
 
@@ -2089,36 +1879,40 @@
     document.getElementById("tab-carrier-skt").classList.toggle("active", c === "SKT");
     document.getElementById("tab-carrier-kt").classList.toggle("active", c === "KT");
     document.getElementById("tab-carrier-lgu").classList.toggle("active", c === "LGU+");
-    refreshDeviceList();
+    updateView();
   };
 
   function loadData() {
-    Promise.all([
-      fetch(SHEET_URL).then(function (res) { return res.text(); }),
-      fetchNpnpProductMap(),
-    ])
-      .then(function (results) {
-        const text = results[0];
-        const npnpMap = results[1];
-        const jsonText = text.substring(text.indexOf("{"), text.lastIndexOf("}") + 1);
-        const data = JSON.parse(jsonText);
+    fetchNpnpProducts()
+      .then(function (data) {
+        applyUrl = data.applyUrl || "";
+        approvalUrl = data.approvalUrl || "";
 
-        const items = data.table.rows.map(normalizeRow);
-        return Promise.all(
-          items.map(function (item) { return applyNpnpOverride(item, npnpMap); })
-        );
-      })
-      .then(function (resolvedItems) {
-        rawData = resolvedItems;
+        const products = (data.products || []).map(function (p) {
+          return {
+            id: p.id,
+            name: String(p.name || "").trim(),
+            factory: Number(p.factoryPrice) || 0,
+            modelImageUrl: p.image || "",
+            detailHtml: p.detailHtml || "",
+          };
+        });
+
+        allProducts = products.filter(function (item) {
+          if (!item.name || !item.factory) return false;
+          if (!ONLY_MODEL) return true;
+          return item.name.toLowerCase().trim().includes(String(ONLY_MODEL).toLowerCase().trim());
+        });
+
         refreshDeviceList();
       })
       .catch(function (e) {
-        console.error(e);
+        console.error("np-np.kr 상품 조회 실패:", e);
         document.getElementById("disp-name").innerText = "데이터 로딩 오류";
         document.getElementById("device-select").innerHTML =
-          '<option>구글시트 로딩 오류</option>';
+          '<option>상품 로딩 오류</option>';
         document.getElementById("plan-body").innerHTML =
-          '<tr><td colspan="6" class="loading-cell">구글시트를 불러오지 못했습니다. 공유 설정과 탭 이름 data를 확인해 주세요.</td></tr>';
+          '<tr><td colspan="6" class="loading-cell">np-np.kr에서 상품 정보를 불러오지 못했습니다.</td></tr>';
       });
   }
 
@@ -2178,30 +1972,29 @@
     notifyParentHeight();
   };
 
-  window.updateView = function () {
+  function setDetailHtml(html) {
+    const section = document.getElementById("detail-spec-section");
+    const content = document.getElementById("detail-spec-content");
+    if (!section || !content) return;
+
+    const text = String(html || "").trim();
+    content.innerHTML = text;
+    section.style.display = text ? "block" : "none";
+  }
+
+  window.updateView = async function () {
     const selector = document.getElementById("device-select");
     const selectedIndex = Number(selector.value) || 0;
-    const d = allData[selectedIndex];
+    const d = allProducts[selectedIndex];
 
     if (!d) return;
     syncDeviceCards(selectedIndex);
 
-    document.getElementById("disp-name").innerText = CARRIER_LABEL[d.carrier] + " " + d.name;
-    document.getElementById("disp-factory").innerText = "출고가: " + won(d.factory);
-    setSheetInfo("detail-spec-section", "detail-spec-content", d.detailSpec);
-    setSheetInfo("procedure-notice-section", "procedure-notice-content", d.procedureNotice);
+    const myToken = ++renderToken;
 
-    const onnuriNote = document.getElementById("onnuri-note");
-    if (onnuriNote) {
-      const onnuriText = String(d.benefit || "").trim();
-      if (onnuriText) {
-        onnuriNote.innerText = "삼성온누리 환급\n" + onnuriText;
-        onnuriNote.style.display = "block";
-      } else {
-        onnuriNote.innerText = "";
-        onnuriNote.style.display = "none";
-      }
-    }
+    document.getElementById("disp-name").innerText = CARRIER_LABEL[carrier] + " " + d.name;
+    document.getElementById("disp-factory").innerText = "출고가: " + won(d.factory);
+    setDetailHtml(d.detailHtml);
 
     const mainModelImage = document.getElementById("mainModelImage");
 
@@ -2237,32 +2030,40 @@
       productInfoImageBox.style.display = "none";
     }
 
-    setLink("link-apply", d.applyUrl);
-    setLink("link-approval", d.approvalUrl);
+    setLink("link-apply", applyUrl);
+    setLink("link-approval", approvalUrl);
     setLink("link-kakao", DEFAULT_KAKAO);
 
     const tbody = document.getElementById("plan-body");
+    const cacheKey = d.id + "_" + carrier;
 
-    if (!d.plans.length) {
+    let plans = planCache[cacheKey];
+    if (!plans) {
+      tbody.innerHTML = '<tr><td colspan="6" class="loading-cell">요금제를 불러오는 중입니다...</td></tr>';
+      notifyParentHeight();
+      plans = await fetchNpnpPlans(d.id, carrier);
+      if (myToken !== renderToken) return; // 그 사이 다른 기기/통신사로 선택이 바뀜 — 이 결과는 버림
+      planCache[cacheKey] = plans;
+    }
+
+    if (!plans.length) {
       tbody.innerHTML = '<tr><td colspan="6" class="loading-cell">요금제 데이터가 없습니다.</td></tr>';
+      notifyParentHeight();
       return;
     }
 
     const rate = 0.059 / 12;
+    const isMnp = joinType === "MNP";
 
-    tbody.innerHTML = d.plans
+    tbody.innerHTML = plans
       .map(function (plan) {
-        const supportIndex = plan.originalIndex;
-        const isMnp = joinType === "MNP";
-
         const commonSupport =
           discountType === "SUPPORT"
-            ? toWon(getByIndex(isMnp ? d.supportMNPText : d.supportCHGText, supportIndex))
+            ? (isMnp ? plan.supportMnp : plan.supportChange)
             : 0;
 
         // 선택약정이어도 추가지원금은 반영
-        const extraSupport =
-          toWon(getByIndex(isMnp ? d.extraMNPText : d.extraCHGText, supportIndex));
+        const extraSupport = isMnp ? plan.extraMnp : plan.extraChange;
 
         // 공통지원: 출고가 - 공통지원 - 추가지원금
         // 선택약정: 출고가 - 추가지원금
@@ -2290,7 +2091,7 @@
         return (
           "<tr>" +
             '<td class="plan-cell">' +
-              '<div class="plan-name">' + plan.name + "</div>" +
+              '<div class="plan-name">' + escapeHtml(plan.name) + "</div>" +
               '<div style="font-size:12px;color:#666;">월 ' + won(plan.fee) + "</div>" +
             "</td>" +
             '<td data-label="통신사 지원금">' + (discountType === "SUPPORT" ? won(commonSupport) : "선약 25%") + "</td>" +
