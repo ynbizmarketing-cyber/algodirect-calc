@@ -572,8 +572,7 @@
       margin: 0 auto 18px;
     }
 
-    .info-color-section,
-    .info-storage-section {
+    .info-color-section {
       max-width: 900px;
       margin: 0 auto 20px;
       padding: 18px 20px;
@@ -615,13 +614,15 @@
       display: flex;
       flex-wrap: wrap;
       gap: 8px;
+      padding: 12px;
+      background: #f7f7f7;
     }
 
     .info-storage-btn {
       padding: 10px 16px;
       border: 1px solid #ddd;
       border-radius: 10px;
-      background: #f7f7f7;
+      background: #fff;
       color: #333;
       font-size: 13px;
       font-weight: 700;
@@ -1577,6 +1578,9 @@
       </div>
     </div>
 
+    <div class="option-title" id="storage-option-title" style="display:none;">용량 선택</div>
+    <div class="info-storage-list" id="info-storage-list" style="display:none;"></div>
+
     <div class="option-title">통신사 선택</div>
     <div class="carrier-tab-group">
       <div class="tab active" id="tab-carrier-skt" onclick="setCarrier('SKT')">SKT</div>
@@ -1651,11 +1655,6 @@
         <section class="info-color-section" id="info-color-section" style="display:none;">
           <h3 class="info-section-title">색상 선택</h3>
           <div class="info-color-list" id="info-color-list"></div>
-        </section>
-
-        <section class="info-storage-section" id="info-storage-section" style="display:none;">
-          <h3 class="info-section-title">용량별 출고가</h3>
-          <div class="info-storage-list" id="info-storage-list"></div>
         </section>
 
         <section class="sheet-info-section" id="detail-images-section" style="display:none;">
@@ -2190,12 +2189,13 @@
   }
 
   function renderInfoStorages(d) {
-    const section = document.getElementById("info-storage-section");
+    const title = document.getElementById("storage-option-title");
     const list = document.getElementById("info-storage-list");
-    if (!section || !list) return;
+    if (!title || !list) return;
 
     if (!d.storages || d.storages.length < 2) {
-      section.style.display = "none";
+      title.style.display = "none";
+      list.style.display = "none";
       list.innerHTML = "";
       return;
     }
@@ -2213,7 +2213,8 @@
       })
       .join("");
 
-    section.style.display = "block";
+    title.style.display = "block";
+    list.style.display = "flex";
   }
 
   window.selectInfoColor = function (index) {
