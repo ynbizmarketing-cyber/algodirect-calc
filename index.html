@@ -1863,17 +1863,56 @@
     };
   }
 
-  // U열(니폰내폰상품ID)이 채워진 행은 이름/출고가/이미지를 np-np.kr 상품 API 값으로 덮어씀
+  const NPNP_PLANS_API_URL = "https://www.np-np.kr/api/mobile/plans";
+
+  function telecomToNpnpParam(carrier) {
+    return carrier === "LGU+" ? "LGUPLUS" : carrier; // SKT/KT는 그대로, LGU+ → LGUPLUS
+  }
+
+  // np-np.kr의 요금제/공시지원금/추가지원금을 그대로 가져와 시트의 L~O(요금제), C~F(지원금) 대체
+  async function fetchNpnpPlans(productId, carrier) {
+    try {
+      const url =
+        NPNP_PLANS_API_URL +
+        "?pid=" + encodeURIComponent(productId) +
+        "&telecom_id=" + encodeURIComponent(telecomToNpnpParam(carrier));
+      const res = await fetch(url);
+      const data = await res.json();
+      return (data.plans || []).map(function (p) {
+        return {
+          name: p.planName,
+          fee: p.price,
+          supportMnp: p.supportMoneyMnp || 0,
+          supportChange: p.supportMoneyChange || 0,
+          extraMnp: p.extraSupportMnp || 0,
+          extraChange: p.extraSupportChange || 0,
+        };
+      });
+    } catch (e) {
+      console.error("np-np.kr 요금제 연동 조회 실패 (시트 요금제로 진행):", e);
+      return null;
+    }
+  }
+
+  // U열(니폰내폰상품ID)이 채워진 행은 이름/출고가/이미지/요금제/지원금을 np-np.kr 데이터로 덮어씀
   // (없거나 매칭 실패 시 시트에 입력된 기존 값 그대로 사용 — 기존 행 호환)
-  function applyNpnpOverride(item, npnpMap) {
+  async function applyNpnpOverride(item, npnpMap) {
     if (!item.npnpProductId) return item;
     const matched = npnpMap[item.npnpProductId];
     if (!matched) return item;
-    return Object.assign({}, item, {
+
+    const overrides = {
       name: matched.name || item.name,
       factory: matched.factoryPrice || item.factory,
       modelImageUrl: matched.image || item.modelImageUrl,
-    });
+    };
+
+    const npnpPlans = await fetchNpnpPlans(item.npnpProductId, item.carrier);
+    if (npnpPlans && npnpPlans.length) {
+      overrides.plans = npnpPlans;
+    }
+
+    return Object.assign({}, item, overrides);
   }
 
   async function fetchNpnpProductMap() {
@@ -2064,9 +2103,13 @@
         const jsonText = text.substring(text.indexOf("{"), text.lastIndexOf("}") + 1);
         const data = JSON.parse(jsonText);
 
-        rawData = data.table.rows
-          .map(normalizeRow)
-          .map(function (item) { return applyNpnpOverride(item, npnpMap); });
+        const items = data.table.rows.map(normalizeRow);
+        return Promise.all(
+          items.map(function (item) { return applyNpnpOverride(item, npnpMap); })
+        );
+      })
+      .then(function (resolvedItems) {
+        rawData = resolvedItems;
         refreshDeviceList();
       })
       .catch(function (e) {
