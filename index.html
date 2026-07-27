@@ -1473,7 +1473,7 @@
       </div>
 
       <div class="hero-image-box">
-        <img id="mainModelImage" src="" alt="SK 메인 이미지" style="height: 980px" onerror="this.style.display='none'" />
+        <img id="mainModelImage" src="" alt="메인 이미지" onerror="this.style.display='none'" />
       </div>
 
       <div class="spacer-xl"></div>
@@ -1485,7 +1485,7 @@
         <img class="brand-logo" src="logo.jpg" alt="니폰내폰" />
         <div class="product-name-box">
           <div class="product-name-en">SPECIAL</div>
-          <div class="product-name-ko">SK 휴대폰 특가</div>
+          <div class="product-name-ko">휴대폰 특가</div>
         </div>
       </div>
 
@@ -1510,7 +1510,7 @@
 
         <div>
           <div class="spec-list">
-            <p><strong>SK</strong> 번호이동 / 기기변경</p>
+            <p>번호이동 / 기기변경</p>
             <p>공통지원 / 선택약정 선택 가능</p>
             <p>일시납 / 24개월 할부 선택 가능</p>
           </div>
@@ -1520,7 +1520,7 @@
 
       <div class="black-panel">
         <div>
-          <p><strong>통신사</strong> | SK | 번호이동, 기기변경</p>
+          <p><strong>통신사</strong> | SKT / KT / LG U+ | 번호이동, 기기변경</p>
           <p><strong>약정</strong> | 공통지원 24개월 / 선택약정 24개월</p>
           <p><strong>부가서비스</strong> | 조건별 상이, 상담 시 안내</p>
           <p>제휴카드 / 인터넷 가입 없이 진행 가능</p>
@@ -1651,8 +1651,13 @@
           <div class="info-storage-list" id="info-storage-list"></div>
         </section>
 
-        <section class="sheet-info-section" id="detail-spec-section">
+        <section class="sheet-info-section" id="detail-images-section" style="display:none;">
           <h3 class="sheet-info-title">상세페이지</h3>
+          <div class="sheet-info-content" id="detail-images-content"></div>
+        </section>
+
+        <section class="sheet-info-section" id="detail-spec-section">
+          <h3 class="sheet-info-title">상세 설명</h3>
           <div class="sheet-info-content" id="detail-spec-content"></div>
         </section>
       </div>
@@ -1764,7 +1769,7 @@
 
 <script>
 (function () {
-  const DEFAULT_KAKAO = "http://pf.kakao.com/_xmgiwn/chat";
+  const DEFAULT_KAKAO = "http://pf.kakao.com/_fMgJj/chat"; // np-np.kr 관리자 설정에서 못 가져올 경우 폴백
   const NPNP_API_URL = "https://www.np-np.kr/api/products/elevenst";
   const NPNP_PLANS_API_URL = "https://www.np-np.kr/api/mobile/plans";
 
@@ -1778,6 +1783,7 @@
   let carrier = "SKT";
   let applyUrl = "";    // 상품과 무관한 공통 링크 (np-np.kr 관리자 설정)
   let approvalUrl = "";
+  let kakaoUrl = "";     // np-np.kr 관리자의 위젯 설정(widget.kakaoUrl)과 항상 동일하게 유지
   let selectedColorIndex = 0;   // 기기 변경 시 0으로 초기화
   let selectedStorageIndex = 0; // 기기 변경 시 0으로 초기화, 용량별 출고가 계산에 사용
 
@@ -1961,6 +1967,7 @@
       .then(function (data) {
         applyUrl = data.applyUrl || "";
         approvalUrl = data.approvalUrl || "";
+        kakaoUrl = data.kakaoUrl || DEFAULT_KAKAO;
 
         const products = (data.products || []).map(function (p) {
           const storages = Array.isArray(p.storages) ? p.storages : [];
@@ -1975,6 +1982,7 @@
             factory: Number(p.factoryPrice) || 0,
             modelImageUrl: p.image || "",
             detailHtml: p.detailHtml || "",
+            elevenstDetailImages: Array.isArray(p.elevenstDetailImages) ? p.elevenstDetailImages : [],
             colors: Array.isArray(p.colors) ? p.colors : [],
             colorCodes: Array.isArray(p.colorCodes) ? p.colorCodes : [],
             colorImages: colorImages,
@@ -2065,6 +2073,30 @@
     const text = String(html || "").trim();
     content.innerHTML = text;
     section.style.display = text ? "block" : "none";
+  }
+
+  // np-np.kr 관리자에서 수기 업로드한 상세 이미지들을 세로로 나열
+  function renderDetailImages(images) {
+    const section = document.getElementById("detail-images-section");
+    const content = document.getElementById("detail-images-content");
+    if (!section || !content) return;
+
+    const urls = (images || []).filter(function (url) {
+      return url && /^https?:\/\//i.test(url);
+    });
+
+    if (!urls.length) {
+      content.innerHTML = "";
+      section.style.display = "none";
+      return;
+    }
+
+    content.innerHTML = urls
+      .map(function (url) {
+        return '<img src="' + escapeHtml(url) + '" alt="상품 상세 이미지" loading="lazy">';
+      })
+      .join("");
+    section.style.display = "block";
   }
 
   let currentDevice = null; // 색상/용량 클릭 핸들러에서 참조
@@ -2281,13 +2313,14 @@
     document.getElementById("disp-name").innerText = CARRIER_LABEL[carrier] + " " + d.name;
     document.getElementById("disp-factory").innerText = "출고가: " + won(effectiveFactoryPrice(d));
     setDetailHtml(d.detailHtml);
+    renderDetailImages(d.elevenstDetailImages);
     renderInfoColors(d);
     renderInfoStorages(d);
     applyDeviceImage(d);
 
     setLink("link-apply", applyUrl);
     setLink("link-approval", approvalUrl);
-    setLink("link-kakao", DEFAULT_KAKAO);
+    setLink("link-kakao", kakaoUrl);
 
     await renderPlanTable(d);
   };
