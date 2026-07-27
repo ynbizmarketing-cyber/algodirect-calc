@@ -565,6 +565,68 @@
       margin: 0 auto 18px;
     }
 
+    .info-color-section,
+    .info-storage-section {
+      max-width: 900px;
+      margin: 0 auto 20px;
+      padding: 18px 20px;
+      background: #fff;
+      border: 1px solid #eee;
+      border-radius: 12px;
+      font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", Arial, sans-serif;
+    }
+
+    .info-section-title {
+      margin: 0 0 12px;
+      font-size: 14px;
+      font-weight: 900;
+      color: #222;
+    }
+
+    .info-color-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .info-color-dot {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      border: 2px solid rgba(0,0,0,0.08);
+      cursor: pointer;
+      padding: 0;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+
+    .info-color-dot.active {
+      border-color: #f0443c;
+      box-shadow: 0 0 0 2px rgba(240,68,60,0.25);
+    }
+
+    .info-storage-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .info-storage-btn {
+      padding: 10px 16px;
+      border: 1px solid #ddd;
+      border-radius: 10px;
+      background: #f7f7f7;
+      color: #333;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .info-storage-btn.active {
+      border-color: #f0443c;
+      background: #fff5f4;
+      color: #db3c35;
+    }
+
     .bottom-detail {
       max-width: 1100px;
       margin: 36px auto 0;
@@ -1579,6 +1641,16 @@
           <img id="productInfoImage" src="" alt="선택 상품 상세 이미지">
         </div>
 
+        <section class="info-color-section" id="info-color-section" style="display:none;">
+          <h3 class="info-section-title">색상 선택</h3>
+          <div class="info-color-list" id="info-color-list"></div>
+        </section>
+
+        <section class="info-storage-section" id="info-storage-section" style="display:none;">
+          <h3 class="info-section-title">용량별 출고가</h3>
+          <div class="info-storage-list" id="info-storage-list"></div>
+        </section>
+
         <section class="sheet-info-section" id="detail-spec-section">
           <h3 class="sheet-info-title">상세페이지</h3>
           <div class="sheet-info-content" id="detail-spec-content"></div>
@@ -1706,6 +1778,8 @@
   let carrier = "SKT";
   let applyUrl = "";    // 상품과 무관한 공통 링크 (np-np.kr 관리자 설정)
   let approvalUrl = "";
+  let selectedColorIndex = 0;   // 기기 변경 시 0으로 초기화
+  let selectedStorageIndex = 0; // 기기 변경 시 0으로 초기화, 용량별 출고가 계산에 사용
 
   // 요금제 조회 결과 캐시: `${상품id}_${통신사}` -> plans 배열
   // 가입유형/할인방식/결제방법 변경은 재조회 없이 캐시된 요금제로 다시 계산만 하면 됨
@@ -1889,12 +1963,23 @@
         approvalUrl = data.approvalUrl || "";
 
         const products = (data.products || []).map(function (p) {
+          const storages = Array.isArray(p.storages) ? p.storages : [];
+          const storagePrices = Array.isArray(p.storagePrices)
+            ? p.storagePrices.map(function (n) { return Number(n) || 0; })
+            : [];
+          const colorImages = Array.isArray(p.colorImages) ? p.colorImages : [];
+
           return {
             id: p.id,
             name: String(p.name || "").trim(),
             factory: Number(p.factoryPrice) || 0,
             modelImageUrl: p.image || "",
             detailHtml: p.detailHtml || "",
+            colors: Array.isArray(p.colors) ? p.colors : [],
+            colorCodes: Array.isArray(p.colorCodes) ? p.colorCodes : [],
+            colorImages: colorImages,
+            storages: storages,
+            storagePrices: storagePrices,
           };
         });
 
@@ -1982,25 +2067,20 @@
     section.style.display = text ? "block" : "none";
   }
 
-  window.updateView = async function () {
-    const selector = document.getElementById("device-select");
-    const selectedIndex = Number(selector.value) || 0;
-    const d = allProducts[selectedIndex];
+  let currentDevice = null; // 색상/용량 클릭 핸들러에서 참조
 
-    if (!d) return;
-    syncDeviceCards(selectedIndex);
-
-    const myToken = ++renderToken;
-
-    document.getElementById("disp-name").innerText = CARRIER_LABEL[carrier] + " " + d.name;
-    document.getElementById("disp-factory").innerText = "출고가: " + won(d.factory);
-    setDetailHtml(d.detailHtml);
+  // 선택된 색상(selectedColorIndex)에 맞는 이미지를 3곳(메인/계산기헤더/상품정보)에 반영
+  function applyDeviceImage(d) {
+    const effectiveImage =
+      (d.colorImages && d.colorImages[selectedColorIndex]) ||
+      (d.colorImages && d.colorImages[0]) ||
+      d.modelImageUrl ||
+      "";
 
     const mainModelImage = document.getElementById("mainModelImage");
-
     if (mainModelImage) {
-      if (d.modelImageUrl && String(d.modelImageUrl).startsWith("http")) {
-        mainModelImage.src = d.modelImageUrl;
+      if (effectiveImage && String(effectiveImage).startsWith("http")) {
+        mainModelImage.src = effectiveImage;
         mainModelImage.style.display = "block";
       } else {
         mainModelImage.src = "";
@@ -2010,9 +2090,8 @@
 
     const imageBox = document.getElementById("deviceImageBox");
     const image = document.getElementById("deviceImage");
-
-    if (d.modelImageUrl && String(d.modelImageUrl).startsWith("http")) {
-      image.src = d.modelImageUrl;
+    if (effectiveImage && String(effectiveImage).startsWith("http")) {
+      image.src = effectiveImage;
       imageBox.style.display = "block";
     } else {
       image.src = "";
@@ -2021,19 +2100,96 @@
 
     const productInfoImageBox = document.getElementById("productInfoImageBox");
     const productInfoImage = document.getElementById("productInfoImage");
-
-    if (d.modelImageUrl && String(d.modelImageUrl).startsWith("http")) {
-      productInfoImage.src = d.modelImageUrl;
+    if (effectiveImage && String(effectiveImage).startsWith("http")) {
+      productInfoImage.src = effectiveImage;
       productInfoImageBox.style.display = "block";
     } else {
       productInfoImage.src = "";
       productInfoImageBox.style.display = "none";
     }
+  }
 
-    setLink("link-apply", applyUrl);
-    setLink("link-approval", approvalUrl);
-    setLink("link-kakao", DEFAULT_KAKAO);
+  function effectiveFactoryPrice(d) {
+    const price = d.storagePrices && d.storagePrices[selectedStorageIndex];
+    return price != null && price > 0 ? price : d.factory;
+  }
 
+  function renderInfoColors(d) {
+    const section = document.getElementById("info-color-section");
+    const list = document.getElementById("info-color-list");
+    if (!section || !list) return;
+
+    if (!d.colors || d.colors.length < 2) {
+      section.style.display = "none";
+      list.innerHTML = "";
+      return;
+    }
+
+    list.innerHTML = d.colors
+      .map(function (name, index) {
+        const code = (d.colorCodes && d.colorCodes[index]) || "#cccccc";
+        const active = index === selectedColorIndex ? " active" : "";
+        return (
+          '<button type="button" class="info-color-dot' + active + '" ' +
+            'style="background-color:' + escapeHtml(code) + ';" ' +
+            'title="' + escapeHtml(name) + '" ' +
+            'aria-label="' + escapeHtml(name) + '" ' +
+            'onclick="selectInfoColor(' + index + ')">' +
+          "</button>"
+        );
+      })
+      .join("");
+
+    section.style.display = "block";
+  }
+
+  function renderInfoStorages(d) {
+    const section = document.getElementById("info-storage-section");
+    const list = document.getElementById("info-storage-list");
+    if (!section || !list) return;
+
+    if (!d.storages || d.storages.length < 2) {
+      section.style.display = "none";
+      list.innerHTML = "";
+      return;
+    }
+
+    list.innerHTML = d.storages
+      .map(function (label, index) {
+        const price = d.storagePrices[index] || 0;
+        const active = index === selectedStorageIndex ? " active" : "";
+        return (
+          '<button type="button" class="info-storage-btn' + active + '" ' +
+            'onclick="selectInfoStorage(' + index + ')">' +
+            escapeHtml(label) + " " + escapeHtml(won(price)) +
+          "</button>"
+        );
+      })
+      .join("");
+
+    section.style.display = "block";
+  }
+
+  window.selectInfoColor = function (index) {
+    selectedColorIndex = index;
+    if (currentDevice) {
+      renderInfoColors(currentDevice);
+      applyDeviceImage(currentDevice);
+    }
+  };
+
+  window.selectInfoStorage = function (index) {
+    selectedStorageIndex = index;
+    if (currentDevice) {
+      renderInfoStorages(currentDevice);
+      document.getElementById("disp-factory").innerText =
+        "출고가: " + won(effectiveFactoryPrice(currentDevice));
+      renderPlanTable(currentDevice);
+    }
+  };
+
+  async function renderPlanTable(d) {
+    const myToken = ++renderToken;
     const tbody = document.getElementById("plan-body");
     const cacheKey = d.id + "_" + carrier;
 
@@ -2054,6 +2210,7 @@
 
     const rate = 0.059 / 12;
     const isMnp = joinType === "MNP";
+    const factory = effectiveFactoryPrice(d);
 
     tbody.innerHTML = plans
       .map(function (plan) {
@@ -2068,7 +2225,7 @@
         // 공통지원: 출고가 - 공통지원 - 추가지원금
         // 선택약정: 출고가 - 추가지원금
         // 지원금 합이 출고가를 넘는 경우 0원 밑으로 내려가지 않도록 방어
-        const devicePriceRaw = d.factory - commonSupport - extraSupport;
+        const devicePriceRaw = factory - commonSupport - extraSupport;
         const devicePrice = Math.max(0, devicePriceRaw);
 
         const monthlyDevice =
@@ -2105,6 +2262,34 @@
       .join("");
 
     notifyParentHeight();
+  }
+
+  window.updateView = async function () {
+    const selector = document.getElementById("device-select");
+    const selectedIndex = Number(selector.value) || 0;
+    const d = allProducts[selectedIndex];
+
+    if (!d) return;
+    syncDeviceCards(selectedIndex);
+
+    if (!currentDevice || currentDevice.id !== d.id) {
+      selectedColorIndex = 0;
+      selectedStorageIndex = 0;
+    }
+    currentDevice = d;
+
+    document.getElementById("disp-name").innerText = CARRIER_LABEL[carrier] + " " + d.name;
+    document.getElementById("disp-factory").innerText = "출고가: " + won(effectiveFactoryPrice(d));
+    setDetailHtml(d.detailHtml);
+    renderInfoColors(d);
+    renderInfoStorages(d);
+    applyDeviceImage(d);
+
+    setLink("link-apply", applyUrl);
+    setLink("link-approval", approvalUrl);
+    setLink("link-kakao", DEFAULT_KAKAO);
+
+    await renderPlanTable(d);
   };
 
   loadData();
