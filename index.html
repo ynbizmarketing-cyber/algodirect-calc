@@ -2035,13 +2035,28 @@
 
   function notifyParentHeight() {
     if (window.parent === window) return; // iframe이 아니면 무시
+    // rAF 한 번만으로는 탭 전환 직후 레이아웃이 덜 반영된 시점의 높이를
+    // 읽어 부모에 잘못된(이전) 값을 보내는 경우가 있어 두 프레임 뒤에 측정
     window.requestAnimationFrame(function () {
-      const height = document.documentElement.scrollHeight;
-      try {
-        window.parent.postMessage({ type: "sk-calc-height", height: height }, "*");
-      } catch (e) {
-        // cross-origin 등으로 실패해도 계산기 동작에는 영향 없음
-      }
+      window.requestAnimationFrame(function () {
+        const height = document.documentElement.scrollHeight;
+        try {
+          window.parent.postMessage({ type: "sk-calc-height", height: height }, "*");
+        } catch (e) {
+          // cross-origin 등으로 실패해도 계산기 동작에는 영향 없음
+        }
+      });
+    });
+  }
+
+  // 탭 전환 직후 rAF 타이밍과 무관하게, 실제 렌더링 크기가 바뀔 때마다
+  // 확실하게 재측정 — 이미지 지연 로딩 등으로 뒤늦게 커지는 경우까지 포함
+  if (window.parent !== window && typeof ResizeObserver !== "undefined") {
+    const resizeObserver = new ResizeObserver(function () {
+      notifyParentHeight();
+    });
+    window.addEventListener("DOMContentLoaded", function () {
+      resizeObserver.observe(document.body);
     });
   }
 
