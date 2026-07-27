@@ -269,12 +269,12 @@
     .footer-space { height: 28px; }
 
     :root {
-      --sk-red: #ff3b30;
-      --sk-orange: #ff7a00;
-      --sk-dark: #333;
+      --npnp-red: #ff3b30;
+      --npnp-orange: #ff7a00;
+      --npnp-dark: #333;
     }
 
-    .sk-calc-wrap {
+    .npnp-calc-wrap {
       max-width: 900px;
       margin: 0 auto 24px;
       background: #fff;
@@ -286,11 +286,11 @@
     }
 
     .calc-header {
-      background: var(--sk-dark);
+      background: var(--npnp-dark);
       color: #fff;
       padding: 20px;
       text-align: center;
-      border-bottom: 4px solid var(--sk-red);
+      border-bottom: 4px solid var(--npnp-red);
     }
 
     .calc-header h2 {
@@ -427,15 +427,15 @@
     .tab.active,
     .stab.active {
       background: #fff5f4;
-      color: var(--sk-red);
-      border-color: var(--sk-red);
+      color: var(--npnp-red);
+      border-color: var(--npnp-red);
       box-shadow: 0 4px 12px rgba(255,59,48,0.12);
     }
 
     .tab.active::before,
     .stab.active::before {
-      border-color: var(--sk-red);
-      background: var(--sk-red);
+      border-color: var(--npnp-red);
+      background: var(--npnp-red);
     }
 
     .tab.active::after,
@@ -492,7 +492,7 @@
     }
 
     .price-red {
-      color: var(--sk-red);
+      color: var(--npnp-red);
       font-weight: 900;
     }
 
@@ -529,7 +529,7 @@
     }
 
     .btn-apply { background: #222; color: white; }
-    .btn-approval { background: var(--sk-red); color: #fff; }
+    .btn-approval { background: var(--npnp-red); color: #fff; }
     .btn-kakao { background: #fee500; color: #3c1e1e; }
 
     .calc-info {
@@ -606,8 +606,8 @@
     }
 
     .detail-tab.active {
-      border-color: var(--sk-red);
-      background: var(--sk-red);
+      border-color: var(--npnp-red);
+      background: var(--npnp-red);
       color: #fff;
     }
 
@@ -704,7 +704,7 @@
       .notice-title { font-size: 20px; margin-top: 18px; }
       .notice-box { padding: 16px; }
       .notice-box p { font-size: 12px; line-height: 1.7; }
-      .sk-calc-wrap { border-radius: 0; }
+      .npnp-calc-wrap { border-radius: 0; }
       .btn-group { flex-direction: column; }
       .table-wrapper {
         overflow-x: visible;
@@ -974,7 +974,7 @@
       font-size: 13px;
     }
 
-    .sk-calc-wrap {
+    .npnp-calc-wrap {
       max-width: 1040px;
       margin: 24px auto;
       border: 1px solid rgba(25, 31, 40, 0.04);
@@ -1392,7 +1392,7 @@
       .spec-list p { font-size: 16px; }
       .black-panel { padding: 20px; }
 
-      .sk-calc-wrap {
+      .npnp-calc-wrap {
         margin: 14px 10px;
         border-radius: 22px;
       }
@@ -1520,7 +1520,7 @@
     <div class="footer-space"></div>
   </div>
 
-  <div class="sk-calc-wrap">
+  <div class="npnp-calc-wrap">
     <div class="calc-header">
       <h2 id="disp-name">기종을 로딩 중입니다...</h2>
       <span id="disp-factory"></span>
@@ -2060,7 +2060,7 @@
         // 영향을 받지 않으므로 이걸로 측정
         const height = document.body.getBoundingClientRect().height;
         try {
-          window.parent.postMessage({ type: "sk-calc-height", height: Math.ceil(height) }, "*");
+          window.parent.postMessage({ type: "npnp-calc-height", height: Math.ceil(height) }, "*");
         } catch (e) {
           // cross-origin 등으로 실패해도 계산기 동작에는 영향 없음
         }
