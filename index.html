@@ -1741,6 +1741,7 @@
     "/gviz/tq?tqx=out:json&sheet=data";
 
   const DEFAULT_KAKAO = "http://pf.kakao.com/_xmgiwn/chat";
+  const NPNP_API_URL = "https://www.np-np.kr/api/products/elevenst";
 
   const params = new URLSearchParams(window.location.search);
   const ONLY_MODEL = params.get("model");
@@ -1856,9 +1857,36 @@
       notice: getCell(row, 10),                      // K 유의사항
       detailSpec: getCell(row, 17),                 // R 상세스펙
       procedureNotice: getCell(row, 18),             // S 유의사항 및 절차
+      npnpProductId: String(getCell(row, 20)).trim(), // U 니폰내폰상품ID (있으면 이름/출고가/이미지를 np-np.kr에서 가져와 덮어씀)
 
       plans: plans
     };
+  }
+
+  // U열(니폰내폰상품ID)이 채워진 행은 이름/출고가/이미지를 np-np.kr 상품 API 값으로 덮어씀
+  // (없거나 매칭 실패 시 시트에 입력된 기존 값 그대로 사용 — 기존 행 호환)
+  function applyNpnpOverride(item, npnpMap) {
+    if (!item.npnpProductId) return item;
+    const matched = npnpMap[item.npnpProductId];
+    if (!matched) return item;
+    return Object.assign({}, item, {
+      name: matched.name || item.name,
+      factory: matched.factoryPrice || item.factory,
+      modelImageUrl: matched.image || item.modelImageUrl,
+    });
+  }
+
+  async function fetchNpnpProductMap() {
+    try {
+      const res = await fetch(NPNP_API_URL);
+      const data = await res.json();
+      const map = {};
+      (data.products || []).forEach(function (p) { map[p.id] = p; });
+      return map;
+    } catch (e) {
+      console.error("np-np.kr 상품 연동 조회 실패 (시트 데이터로만 진행):", e);
+      return {};
+    }
   }
 
   function setLink(id, url) {
@@ -2026,15 +2054,19 @@
   };
 
   function loadData() {
-    fetch(SHEET_URL)
-      .then(function (res) {
-        return res.text();
-      })
-      .then(function (text) {
+    Promise.all([
+      fetch(SHEET_URL).then(function (res) { return res.text(); }),
+      fetchNpnpProductMap(),
+    ])
+      .then(function (results) {
+        const text = results[0];
+        const npnpMap = results[1];
         const jsonText = text.substring(text.indexOf("{"), text.lastIndexOf("}") + 1);
         const data = JSON.parse(jsonText);
 
-        rawData = data.table.rows.map(normalizeRow);
+        rawData = data.table.rows
+          .map(normalizeRow)
+          .map(function (item) { return applyNpnpOverride(item, npnpMap); });
         refreshDeviceList();
       })
       .catch(function (e) {
