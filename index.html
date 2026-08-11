@@ -1612,7 +1612,7 @@
           <tr>
             <th>요금제</th>
             <th>통신사 지원금</th>
-            <th>추가지원금</th>
+            <th id="th-extra-support">추가할인</th>
             <th>할부원금</th>
             <th>월 단말금</th>
             <th>월 예상 납부액</th>
@@ -1790,6 +1790,7 @@
   let applyUrl = "";    // 상품과 무관한 공통 링크 (np-np.kr 관리자 설정)
   let approvalUrl = "";
   let kakaoUrl = "";     // np-np.kr 관리자의 위젯 설정(widget.kakaoUrl)과 항상 동일하게 유지
+  let extraSupportLabel = "추가할인"; // np-np.kr 관리자 설정 (요금표에서 "추가지원금" 대신 표시할 문구)
   let selectedColorIndex = 0;   // 기기 변경 시 0으로 초기화
   let selectedStorageIndex = 0; // 기기 변경 시 0으로 초기화, 용량별 출고가 계산에 사용
 
@@ -1981,6 +1982,9 @@
         applyUrl = data.applyUrl || "";
         approvalUrl = data.approvalUrl || "";
         kakaoUrl = data.kakaoUrl || DEFAULT_KAKAO;
+        extraSupportLabel = data.extraSupportLabel || "추가할인";
+        const thExtraSupport = document.getElementById("th-extra-support");
+        if (thExtraSupport) thExtraSupport.textContent = extraSupportLabel;
 
         const products = (data.products || []).map(function (p) {
           const storages = Array.isArray(p.storages) ? p.storages : [];
@@ -2299,7 +2303,7 @@
               '<div style="font-size:12px;color:#666;">월 ' + won(plan.fee) + "</div>" +
             "</td>" +
             '<td data-label="통신사 지원금">' + (discountType === "SUPPORT" ? won(commonSupport) : "선약 25%") + "</td>" +
-            '<td data-label="추가지원금">' + won(extraSupport) + "</td>" +
+            '<td data-label="' + escapeHtml(extraSupportLabel) + '">' + won(extraSupport) + "</td>" +
             '<td data-label="할부원금" class="price-red">' + won(devicePrice) + "</td>" +
             '<td data-label="월 단말금">' + monthlyDeviceText + "</td>" +
             '<td data-label="월 예상 납부액" class="total-row">월 ' + won(totalMonthly) + "</td>" +
