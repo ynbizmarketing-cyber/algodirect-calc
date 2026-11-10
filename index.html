@@ -2332,7 +2332,7 @@
     document.getElementById("disp-name").innerText = CARRIER_LABEL[carrier] + " " + d.name;
     document.getElementById("disp-factory").innerText = "출고가: " + won(effectiveFactoryPrice(d));
     setDetailHtml(d.detailHtml);
-    // renderDetailImages(d.elevenstDetailImages); // 2026-11-10: 상세페이지 이미지 섹션 임시 비활성화(요청으로 주석처리)
+    renderDetailImages(d.elevenstDetailImages);
     renderInfoColors(d);
     renderInfoStorages(d);
     applyDeviceImage(d);
