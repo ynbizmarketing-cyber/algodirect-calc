@@ -1531,11 +1531,11 @@
           <p><strong>통신사</strong> | SKT / KT / LG U+ | 번호이동, 기기변경</p>
           <p><strong>약정</strong> | 공통지원 24개월 / 선택약정 24개월</p>
           <p><strong>부가서비스</strong> | 조건별 상이, 상담 시 안내</p>
-          <p>제휴카드 / 인터넷 가입 없이 진행 가능</p>
+          <p>제휴카드 적용 금액 / 인터넷·TV 가입 없이 진행 가능</p>
         </div>
         <div>
           <p><strong>위약금</strong> : 24개월 이내 해지 시 지원금 및 할인반환금</p>
-          <p><strong>[ 단말기 추가지원금 ]</strong></p>
+          <p><strong>[ 프로모션할인 ]</strong></p>
           <p><strong>유심</strong> : 개통 시 1회 청구</p>
           <p><strong>eSIM</strong> : 가능 단말 상담 시 확인</p>
         </div>
@@ -1612,7 +1612,7 @@
           <tr>
             <th>요금제</th>
             <th>통신사 지원금</th>
-            <th id="th-extra-support">추가할인</th>
+            <th id="th-extra-support">프로모션할인</th>
             <th>할부원금</th>
             <th>월 단말금</th>
             <th>월 예상 납부액</th>
@@ -1717,7 +1717,7 @@
             <div class="guide-copy">· 본 상품은 통신사(SKT·KT·LG U+) 공식 채널을 통해 정식 개통되며, 니폰내폰은 통신사에 등록된 정식 판매점입니다.
 · 표시된 가격은 약정 기간(24개월) 및 특정 요금제 유지 조건을 기준으로 산정된 금액입니다.
 · 신청 시점과 실제 개통 시점의 지원금·할인 금액이 다를 수 있으며, 개통 시점 기준으로 적용됩니다.
-· 모든 할인 혜택(공통지원금·전환지원금·추가지원금·제휴할인 등)은 사전 고지 없이 변경될 수 있으며, 최종 금액은 상담 시점 기준으로 확정됩니다.
+· 모든 할인 혜택(공통지원금·전환지원금·프로모션할인·제휴카드 할인 등)은 사전 고지 없이 변경될 수 있으며, 최종 금액은 상담 시점 기준으로 확정됩니다.
 · 표시된 지원금·월 납부액은 통신사별 기준 요금제로 산정한 예시 금액입니다. 더 낮은 요금제로 개통하면 지원금이 줄어 할부원금이 올라갈 수 있습니다.
 · 요금제 유지 의무기간(통상 93~188일) 내 하향 시 차액이 청구될 수 있습니다.
 · 단말기 할부 수수료율은 연 5.9%이며, 일시납 시 할부 수수료가 발생하지 않습니다.
@@ -1730,7 +1730,7 @@
           <div>
             <h3 class="guide-title">지원금 안내</h3>
             <div class="guide-copy">· 공통지원금은 단말기 구매 시 통신사가 지원하는 금액이며, 선택한 요금제·가입유형에 따라 달라집니다.
-· 추가지원금(추가할인)은 판매점이 제공하는 할인으로, 재고 및 판매 정책에 따라 사전 고지 없이 변동될 수 있고 특정 요금제 유지 등 별도 조건이 부과될 수 있습니다.
+· 프로모션할인은 판매점이 제공하는 할인으로, 재고 및 판매 정책에 따라 사전 고지 없이 변동될 수 있고 특정 요금제 유지 등 별도 조건이 부과될 수 있습니다.
 · 공통지원금 선택 시 선택약정(요금 25% 할인)은 중복 적용되지 않습니다.
 · 번호이동 시 전환지원금이 추가로 적용될 수 있으며, 통신사 정책에 따라 변동됩니다.
 · 의무 유지기간 내 요금제 변경·해지 시 지원금 일부가 반환될 수 있습니다.
@@ -1777,7 +1777,8 @@
   let applyUrl = "";    // 상품과 무관한 공통 링크 (np-np.kr 관리자 설정)
   let approvalUrl = "";
   let kakaoUrl = "";     // np-np.kr 관리자의 위젯 설정(widget.kakaoUrl)과 항상 동일하게 유지
-  let extraSupportLabel = "추가할인"; // np-np.kr 관리자 설정 (요금표에서 "추가지원금" 대신 표시할 문구)
+  const PROMO_DISCOUNT = 700000; // 프로모션할인 고정 금액
+  let extraSupportLabel = "프로모션할인"; // np-np.kr 관리자 설정 (요금표에서 "추가지원금" 대신 표시할 문구)
   let selectedColorIndex = 0;   // 기기 변경 시 0으로 초기화
   let selectedStorageIndex = 0; // 기기 변경 시 0으로 초기화, 용량별 출고가 계산에 사용
 
@@ -1813,8 +1814,8 @@
           fee: p.price,
           supportMnp: p.supportMoneyMnp || 0,
           supportChange: p.supportMoneyChange || 0,
-          extraMnp: p.extraSupportMnp || 0,
-          extraChange: p.extraSupportChange || 0,
+          extraMnp: PROMO_DISCOUNT, // 프로모션할인 70만원 고정
+          extraChange: PROMO_DISCOUNT,
         };
       });
     } catch (e) {
@@ -1873,11 +1874,28 @@
           '<button type="button" class="device-card" data-device-index="' + index + '" onclick="selectDevice(' + index + ')">' +
             '<span class="device-card-visual">' + visualHtml + '</span>' +
             '<span class="device-card-name">' + escapeHtml(d.name) + '</span>' +
-            '<span class="device-card-price">출고가 ' + escapeHtml(won(d.factory)) + '</span>' +
+            '<span class="device-card-price">최대혜택가 ' + escapeHtml(won(d.factory)) + '</span>' +
           '</button>'
         );
       })
       .join("");
+    fillMaxBenefit();
+  }
+
+  // 상품 리스트 금액: 출고가 대신 최대혜택가 (3사 × 번호이동/기기변경 × 전 요금제 중 공통지원금이 가장 큰 조합 + 프로모션할인 차감)
+  async function fillMaxBenefit() {
+    const carriers = ["SKT", "KT", "LGU+"];
+    await Promise.all(allProducts.map(async function (d, index) {
+      let best = 0;
+      for (let ci = 0; ci < carriers.length; ci++) {
+        const key = d.id + "_" + carriers[ci];
+        if (!planCache[key]) planCache[key] = await fetchNpnpPlans(d.id, carriers[ci]);
+        planCache[key].forEach(function (p) { best = Math.max(best, p.supportMnp || 0, p.supportChange || 0); });
+      }
+      const price = Math.max(0, effectiveFactoryPrice(d) - best - PROMO_DISCOUNT);
+      const el = document.querySelector('.device-card[data-device-index="' + index + '"] .device-card-price');
+      if (el) el.textContent = "최대혜택가 " + won(price);
+    }));
   }
 
   function syncDeviceCards(selectedIndex) {
@@ -1979,7 +1997,7 @@
         applyUrl = data.applyUrl || "";
         approvalUrl = data.approvalUrl || "";
         kakaoUrl = data.kakaoUrl || DEFAULT_KAKAO;
-        extraSupportLabel = data.extraSupportLabel || "추가할인";
+        extraSupportLabel = "프로모션할인"; // 문구 고정 (np-np.kr 관리자 값 무시)
         const thExtraSupport = document.getElementById("th-extra-support");
         if (thExtraSupport) thExtraSupport.textContent = extraSupportLabel;
 
@@ -2083,11 +2101,18 @@
     '<div style="font-size:14px;line-height:1.8;color:#333;word-break:keep-all;">' +
     '<p style="margin:0 0 6px;"><strong>구매 안내</strong></p>' +
     '<ul style="margin:0 0 16px;padding-left:18px;">' +
-    '<li>제휴카드·인터넷/TV 가입 없이 진행 가능한 조건입니다.</li>' +
+    '<li>제휴카드 적용 기준 금액이며, 인터넷/TV 가입 없이 진행 가능한 조건입니다.</li>' +
     '<li>가입유형(번호이동/기기변경), 할인방식(공통지원/선택약정), 결제방식(일시납/24개월 할부)에 따라 금액이 달라집니다. 요금제별 실구매가는 위 계산기에서 확인해 주세요.</li>' +
     '<li>부가서비스는 조건별로 상이하며 상담 시 안내드립니다.</li>' +
     '<li>24개월 이내 해지 시 지원금 및 할인반환금(위약금)이 발생할 수 있습니다.</li>' +
     '<li>유심은 개통 시 1회 청구되며, eSIM은 가능 단말 여부를 상담 시 확인해 드립니다.</li>' +
+    '</ul>' +
+    '<p style="margin:0 0 6px;"><strong>제휴카드 안내</strong></p>' +
+    '<ul style="margin:0 0 16px;padding-left:18px;">' +
+    '<li>SKT : [롯데] TELLO T라이트 카드 / KT : [롯데] KT Super DC 롯데 카드 / LG U+ : [롯데] LGU+ x LOCA 롯데카드</li>' +
+    '<li>카드사 신규고객 및 프로모션 대상에 예외조건이 있으니, 카드 발급 전 카드사 고객센터에서 프로모션 대상 여부를 꼭 확인해 주세요.</li>' +
+    '<li>6개월 이상 해당 카드사 무실적 및 해당 통신사 카드 신규 발급 기준이며, 전월 사용 실적 미충족 시 카드사에서 청구됩니다.</li>' +
+    '<li>라이트 할부 선결제 금액에 대한 수수료는 연 5.9%~연 7%이며, 라이트 할부는 개통일 기준 14일 이내 등록해야 합니다.</li>' +
     '</ul>' +
     '<p style="margin:0 0 6px;"><strong>신청 절차</strong></p>' +
     '<ul style="margin:0 0 16px;padding-left:18px;">' +
@@ -2096,8 +2121,8 @@
     '</ul>' +
     '<p style="margin:0 0 6px;"><strong>유의사항</strong></p>' +
     '<ul style="margin:0;padding-left:18px;">' +
-    '<li>지원금·추가할인은 재고 및 판매 정책에 따라 사전 고지 없이 변경될 수 있으며, 최종 금액은 개통 시점 기준으로 확정됩니다.</li>' +
-    '<li>추가할인 적용 시 특정 요금제 유지 등 별도 조건이 부과될 수 있습니다.</li>' +
+    '<li>지원금·프로모션할인은 재고 및 판매 정책에 따라 사전 고지 없이 변경될 수 있으며, 최종 금액은 개통 시점 기준으로 확정됩니다.</li>' +
+    '<li>프로모션할인 적용 시 특정 요금제 유지 등 별도 조건이 부과될 수 있습니다.</li>' +
     '<li>문의 : 니폰내폰 고객센터 070-4224-3320 (월-토 10:00~19:00, 일요일 휴무)</li>' +
     '</ul></div>';
 
