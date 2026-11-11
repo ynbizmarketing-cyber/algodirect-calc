@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SK 상세페이지 + 실시간 요금 계산기</title>
+  <title>니폰내폰 상세페이지 + 실시간 요금 계산기</title>
   <style>
     * { box-sizing: border-box; }
 
@@ -1633,11 +1633,11 @@
     </div>
     <div class="calc-info">
       *** 신청서 작성시 요금제표의 단말기(할부원금과 달라도 그냥 작성완료하시면 됩니다 해피콜시에 다수정됩니다 ***<br>
-      ※ 문의 센터 : 0507-1489-8211
+      ※ 문의 센터 : 070-4224-3320 (월-토 10:00~19:00, 일요일 휴무)
     </div>
 
     <div class="calc-info">
-      최초 개통 시 요금제는 185일 이후 변경 가능하며, 기본료 42,000원 이상으로 변경 가능합니다.<br>
+      요금제 유지 의무기간(통상 93~188일, 통신사·상품별 상이) 이후 변경 가능하며, 기간 내 하향 시 차액이 청구될 수 있습니다.<br>
       단말기 가격은 일시납 가능하며, 일시납 시 순수 요금만 청구됩니다.
     </div>
 
@@ -1962,6 +1962,16 @@
     document.getElementById("tab-carrier-lgu").classList.toggle("active", c === "LGU+");
     updateView();
   };
+
+  (function () {   // ?carrier=SKT|KT|LGU 로 처음 열리는 통신사 탭 지정 (없으면 SKT)
+    var qc = String(params.get("carrier") || "").replace(/\s/g, "+").toUpperCase();
+    var c = qc === "KT" ? "KT" : (qc.indexOf("LG") === 0 ? "LGU+" : (qc === "SKT" ? "SKT" : ""));
+    if (!c) return;
+    carrier = c;
+    document.getElementById("tab-carrier-skt").classList.toggle("active", c === "SKT");
+    document.getElementById("tab-carrier-kt").classList.toggle("active", c === "KT");
+    document.getElementById("tab-carrier-lgu").classList.toggle("active", c === "LGU+");
+  })();
 
   function loadData() {
     fetchNpnpProducts()
