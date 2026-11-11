@@ -1882,6 +1882,16 @@
     fillMaxBenefit();
   }
 
+  // 타요폰(tayophone.com) 목록의 최저 할부원금 (3사 × 번호이동/기기변경 중 최저, 2026-11-11 기준) — 같은 기종은 이 금액으로 맞춤
+  const TAYO_MAX_BENEFIT = {
+    "갤럭시 Z플립8": 433000,
+    "갤럭시 Z폴드8": 928100,
+    "갤럭시 Z폴드8 울트라": 1327300,
+    "갤럭시 S26 5G": 0,
+    "갤럭시 S26 플러스 5G": 52000,
+    "갤럭시 S26 Ultra 5G": 397400,
+  };
+
   // 상품 리스트 금액: 출고가 대신 최대혜택가 (3사 × 번호이동/기기변경 × 전 요금제 중 공통지원금이 가장 큰 조합 + 프로모션할인 차감)
   async function fillMaxBenefit() {
     const carriers = ["SKT", "KT", "LGU+"];
@@ -1893,8 +1903,10 @@
         planCache[key].forEach(function (p) { best = Math.max(best, p.supportMnp || 0, p.supportChange || 0); });
       }
       const price = Math.max(0, effectiveFactoryPrice(d) - best - PROMO_DISCOUNT);
+      const tayo = TAYO_MAX_BENEFIT[d.id];
+      const shown = tayo != null ? tayo : price;
       const el = document.querySelector('.device-card[data-device-index="' + index + '"] .device-card-price');
-      if (el) el.textContent = "최대혜택가 " + won(price);
+      if (el) el.textContent = "최대혜택가 " + won(shown);
     }));
   }
 
