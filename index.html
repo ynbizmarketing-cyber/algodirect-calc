@@ -1777,7 +1777,8 @@
   let applyUrl = "";    // 상품과 무관한 공통 링크 (np-np.kr 관리자 설정)
   let approvalUrl = "";
   let kakaoUrl = "";     // np-np.kr 관리자의 위젯 설정(widget.kakaoUrl)과 항상 동일하게 유지
-  const PROMO_DISCOUNT = 700000; // 프로모션할인 고정 금액
+  const PROMO_DISCOUNT = 700000; // 프로모션할인 (최상위 요금제 기준)
+  const PROMO_STEP = 100000;     // 요금제 한 단계당 감소폭
   let extraSupportLabel = "프로모션할인"; // np-np.kr 관리자 설정 (요금표에서 "추가지원금" 대신 표시할 문구)
   let selectedColorIndex = 0;   // 기기 변경 시 0으로 초기화
   let selectedStorageIndex = 0; // 기기 변경 시 0으로 초기화, 용량별 출고가 계산에 사용
@@ -1808,14 +1809,18 @@
         "&telecom_id=" + encodeURIComponent(telecomToNpnpParam(carrier));
       const res = await fetch(url);
       const data = await res.json();
-      return (data.plans || []).map(function (p) {
+      const raw = data.plans || [];
+      const fees = raw.map(function (p) { return p.price || 0; }).sort(function (x, y) { return y - x; });
+      return raw.map(function (p) {
+        // 프로모션할인: 최상위 요금제 70만원, 요금제가 한 단계 내려갈 때마다 10만원씩 감소
+        const promo = Math.max(0, PROMO_DISCOUNT - PROMO_STEP * fees.indexOf(p.price || 0));
         return {
           name: p.planName,
           fee: p.price,
           supportMnp: p.supportMoneyMnp || 0,
           supportChange: p.supportMoneyChange || 0,
-          extraMnp: PROMO_DISCOUNT, // 프로모션할인 70만원 고정
-          extraChange: PROMO_DISCOUNT,
+          extraMnp: promo,
+          extraChange: promo,
         };
       });
     } catch (e) {
