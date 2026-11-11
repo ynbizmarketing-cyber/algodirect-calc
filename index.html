@@ -1756,7 +1756,7 @@
             <div class="guide-copy">· 주식회사 와이컴퍼니는 「전기통신사업법」 제32조의14(판매점 선임에 대한 승낙 등)에 따라 심사기준을 통과하여 이동통신 3사(SKT·KT·LG U+)로부터 판매를 승낙받은 정식 판매점입니다.
 · 상호 : 주식회사 와이컴퍼니  |  대표자 : 윤상구  |  사업자등록번호 : 343-86-02326
 · 아래 인증마크를 클릭하시면 한국정보통신진흥협회(KAIT) 발급 사전승낙서 원본을 확인하실 수 있습니다.</div>
-            <a href="https://www.ictmarket.or.kr:8443/precon/pop_CertIcon.do?PRECON_REQ_ID=PRE0000159541&amp;YN=1" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:10px;margin-top:10px;text-decoration:none;color:#2563eb;font-weight:700;font-size:14px;">
+            <a href="https://ictmarket.or.kr:8443/precon/pop_CertIcon.do?PRECON_REQ_ID=PRE0000159541&amp;YN=1" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:10px;margin-top:10px;text-decoration:none;color:#2563eb;font-weight:700;font-size:14px;">
               <img src="https://tayophone.com/images/ict_mark_ycompany.png" alt="이동통신서비스 판매점 사전승낙서 인증마크" style="height:56px;width:auto;">
               <span>사전승낙서 확인하기 &rsaquo;</span>
             </a>
@@ -1790,6 +1790,7 @@
   let carrier = "SKT";
   let applyUrl = "";    // 상품과 무관한 공통 링크 (np-np.kr 관리자 설정)
   let approvalUrl = "";
+  const APPROVAL_URL = "https://ictmarket.or.kr:8443/precon/pop_CertIcon.do?PRECON_REQ_ID=PRE0000159541&YN=1";
   let kakaoUrl = "";     // np-np.kr 관리자의 위젯 설정(widget.kakaoUrl)과 항상 동일하게 유지
   const PROMO_DISCOUNT = 700000; // 프로모션할인 (최상위 요금제 기준)
   const PROMO_STEP = 100000;     // 요금제 한 단계당 감소폭
@@ -2026,7 +2027,7 @@
     fetchNpnpProducts()
       .then(function (data) {
         applyUrl = data.applyUrl || "";
-        approvalUrl = data.approvalUrl || "";
+        approvalUrl = APPROVAL_URL; // 와이컴퍼니 사전승낙서 고정 (np-np.kr 관리자 값은 "대리점과의 관계 누락" 오류)
         kakaoUrl = data.kakaoUrl || DEFAULT_KAKAO;
         extraSupportLabel = "프로모션할인"; // 문구 고정 (np-np.kr 관리자 값 무시)
         const thExtraSupport = document.getElementById("th-extra-support");
